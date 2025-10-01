@@ -2,3 +2,4 @@ logs
 .env
 node_modules
 jobs.json
+linkedin-auth.json
