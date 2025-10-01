@@ -1,6 +1,6 @@
 Major Updates
 [x] - No more security issues or check stores cache and session data so no re-login on every attempt
-
+[x] - Fixed the pagination Issue and can fetch 150 jobs .
 
 
 Minor Bug Fixes
