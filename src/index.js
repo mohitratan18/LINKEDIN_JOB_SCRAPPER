@@ -1,9 +1,10 @@
 require('dotenv').config();
 const { chromium } = require('playwright');
 const logger = require('./helpers/logger/logger');
+const config = require('../config.json');
 
 async function autoScrollUntilEnd(page) {
-    await page.evaluate(async () => {
+    return await page.evaluate(async () => {
         // Try multiple selectors to find the scrollable container
         let scrollable = document.querySelector('.scaffold-layout__list-container');
         
@@ -16,11 +17,10 @@ async function autoScrollUntilEnd(page) {
         }
         
         if (!scrollable) {
-            logger.error('Could not find scrollable element');
-            return;
+            return { error: 'Could not find scrollable element' };
         }
 
-        logger.info('Found scrollable element:', scrollable.className);
+        console.log('Found scrollable element:', scrollable.className);
         
         let lastHeight = 0;
         let sameCount = 0;
@@ -40,7 +40,7 @@ async function autoScrollUntilEnd(page) {
 
             const newHeight = scrollable.scrollHeight;
             
-            logger.info(`Scroll attempt ${scrollAttempts + 1}: height ${newHeight}, lastHeight ${lastHeight}`);
+            console.log(`Scroll attempt ${scrollAttempts + 1}: height ${newHeight}, lastHeight ${lastHeight}`);
             
             if (newHeight === lastHeight) {
                 sameCount++;
@@ -52,7 +52,16 @@ async function autoScrollUntilEnd(page) {
             scrollAttempts++;
         }
         
-        logger.info(`Scrolling complete after ${scrollAttempts} attempts`);
+        return { 
+            success: true, 
+            attempts: scrollAttempts 
+        };
+    }).then(result => {
+        if (result.error) {
+            logger.error(result.error);
+        } else {
+            logger.info(`Scrolling complete after ${result.attempts} attempts`);
+        }
     });
 }
 
@@ -63,6 +72,11 @@ const main = async () => {
         const page = await browser.newPage();
         const Email = process.env.LINKEDIN_MAIL;
         const Password = process.env.LINKEDIN_PASSWORD;
+        const filters = {
+            keywords: config?.keywords,
+            location: config?.location,
+            experience: config?.experience,
+        }
 
         if(!Email || !Password){
             logger.error('Email or Password not provided in .env file');
@@ -82,7 +96,6 @@ const main = async () => {
             await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     
             logger.info('Login successful, waiting for navigation');
-            // await page.waitForNavigation();
         }
 
         if(page.url().includes('start') || page.url().includes('feed')){
@@ -94,8 +107,14 @@ const main = async () => {
 
         if (page.url().includes('jobs')) {
             logger.info('Successfully navigated to jobs page');
-            await page.getByRole('link', { name: 'Show all Top job picks for you' }).click();
-            await page.waitForNavigation();
+            const base = 'https://www.linkedin.com/jobs/search/';
+            const params = new URLSearchParams();
+            if (filters.keywords) params.set('keywords', filters.keywords);
+            if (filters.location) params.set('location', filters.location);
+            if (filters.experience) params.set('f_E', String(filters.experience));
+            const searchUrl = `${base}?${params.toString()}`;
+            logger.info('Navigating to jobs search URL:', searchUrl);
+            await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
         } else {
             logger.error('Failed to navigate to jobs page');
             await browser.close();
