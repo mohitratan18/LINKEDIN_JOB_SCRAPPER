@@ -1,5 +1,6 @@
 {
     "keywords": "Full Stack Developer, MERN, ReactJS, NodeJS, NextJS, NestJS",
     "location": "Hyderabad",
-    "experience": 2 
+    "experience": 2,
+    "limit": 150
 }
